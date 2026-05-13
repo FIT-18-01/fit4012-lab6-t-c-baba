@@ -1,5 +1,6 @@
 import os
 import socket
+import time
 from pathlib import Path
 
 from aes_socket_utils import (
@@ -24,7 +25,9 @@ def receive_key_packet() -> bytes:
         server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         server.settimeout(TIMEOUT)
         server.bind((HOST, KEY_PORT))
-        server.listen(1)
+        server.listen(5)
+        time.sleep(0.5)  # Ensure socket is ready for incoming connections
+        print(f"[*] Receiver đang lắng nghe kênh khóa tại {HOST}:{KEY_PORT}")
         conn, _ = server.accept()
 
         with conn:
@@ -41,7 +44,9 @@ def receive_data_packet() -> bytes:
         server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         server.settimeout(TIMEOUT)
         server.bind((HOST, DATA_PORT))
-        server.listen(1)
+        server.listen(5)
+        time.sleep(0.5)  # Ensure socket is ready for incoming connections
+        print(f"[*] Receiver đang lắng nghe kênh dữ liệu tại {HOST}:{DATA_PORT}")
         conn, _ = server.accept()
 
         with conn:
@@ -56,23 +61,19 @@ def main() -> None:
     lines = []
 
     line = f"[*] Receiver đang lắng nghe kênh khóa tại {HOST}:{KEY_PORT}"
-    print(line)
-    lines.append(line)
-
     key_packet = receive_key_packet()
     key, iv = parse_key_packet(key_packet)
+    lines.append(line)
 
     line = "[+] Đã nhận AES key và IV."
     print(line)
     lines.append(line)
 
     line = f"[*] Receiver đang lắng nghe kênh dữ liệu tại {HOST}:{DATA_PORT}"
-    print(line)
-    lines.append(line)
-
     data_packet = receive_data_packet()
     length = parse_length_header(data_packet[:LENGTH_HEADER_SIZE])
     ciphertext = data_packet[LENGTH_HEADER_SIZE:]
+    lines.append(line)
 
     if len(ciphertext) != length:
         raise ValueError("Ciphertext nhận được không khớp length header.")

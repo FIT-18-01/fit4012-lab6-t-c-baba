@@ -1,5 +1,6 @@
 import os
 import socket
+import time
 from pathlib import Path
 
 from aes_socket_utils import build_data_packet, build_key_packet, encrypt_aes_cbc
@@ -23,12 +24,22 @@ def get_plaintext() -> bytes:
     return input("Nhập bản tin: ").encode("utf-8")
 
 
-def send_packet(host: str, port: int, packet: bytes) -> None:
-    """Open one TCP connection and send all bytes."""
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
-        sock.settimeout(TIMEOUT)
-        sock.connect((host, port))
-        sock.sendall(packet)
+def send_packet(host: str, port: int, packet: bytes, max_retries: int = 5) -> None:
+    """Open one TCP connection and send all bytes with retry logic."""
+    last_error = None
+    for attempt in range(max_retries):
+        try:
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+                sock.settimeout(TIMEOUT)
+                sock.connect((host, port))
+                sock.sendall(packet)
+            return  # Success
+        except (ConnectionRefusedError, OSError) as e:
+            last_error = e
+            if attempt < max_retries - 1:
+                time.sleep(0.2 * (attempt + 1))  # Exponential backoff
+            else:
+                raise  # Re-raise on last attempt
 
 
 def main() -> None:
